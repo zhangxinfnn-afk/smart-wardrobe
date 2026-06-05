@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>JS 测试</title>
+</head>
+<body style="padding:40px;font-family:system-ui">
+<h1>纯 HTML JavaScript 测试</h1>
+
+<p id="status" style="color:red">等待 JS 执行...</p>
+
+<button onclick="document.getElementById('status').textContent='✅ 内联 onclick 有效！时间: '+new Date().toLocaleTimeString()"
+  style="padding:12px 24px;font-size:18px;background:#8b5cf6;color:white;border:none;border-radius:8px;cursor:pointer">
+  内联 onclick 测试
+</button>
+
+<br><br>
+
+<button id="btn2"
+  style="padding:12px 24px;font-size:18px;background:#10b981;color:white;border:none;border-radius:8px;cursor:pointer">
+  addEventListener 测试
+</button>
+<span id="result2" style="margin-left:12px"></span>
+
+<script>
+document.getElementById('status').textContent = '✅ 外部 script 标签执行成功！';
+document.getElementById('btn2').addEventListener('click', function() {
+  document.getElementById('result2').textContent = '✅ addEventListener 触发于: ' + new Date().toLocaleTimeString();
+});
+</script>
+
+<hr style="margin-top:32px">
+<p style="color:#888">如果以上两个按钮都无效 → 浏览器完全禁用 JS 或 Tunnel 有问题<br>
+如果内联有效但外部 script 无效 → JS 加载顺序问题<br>
+如果全部有效 → 问题在 Next.js 框架层</p>
+</body>
+</html>

@@ -1,16 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { prisma } from '@/lib/prisma';
 import { buildPosePrompt } from '@/lib/ai';
 import { generatePoseImages } from '@/lib/replicate';
-import type { PoseStyle } from '@/types';
+import type { PoseStyle, User } from '@/types';
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { outfitDescription, cityName, landmark, poseStyle } = body as {
+    const { outfitDescription, cityName, landmark, poseStyle, userId } = body as {
       outfitDescription: string;
       cityName: string;
       landmark: { name: string; description: string };
       poseStyle: PoseStyle;
+      userId?: string;
     };
 
     if (!outfitDescription || !landmark) {
@@ -20,12 +22,20 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Build prompt for Stable Diffusion
+    // 获取用户数据（如果有 userId）
+    let user: User | null = null;
+    if (userId) {
+      const dbUser = await prisma.user.findUnique({ where: { id: userId } });
+      user = dbUser as unknown as User | null;
+    }
+
+    // Build prompt for Stable Diffusion (with user body data)
     const prompt = buildPosePrompt(
       outfitDescription,
       landmark.name,
       landmark.description,
-      poseStyle
+      poseStyle,
+      user
     );
 
     // Generate 4 pose images

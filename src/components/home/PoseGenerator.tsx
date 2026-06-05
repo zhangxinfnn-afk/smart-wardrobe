@@ -14,7 +14,7 @@ interface PoseGeneratorProps {
 }
 
 export function PoseGenerator({ outfitDescription, disabled }: PoseGeneratorProps) {
-  const { currentCity, currentPoseStyle, setCurrentPoseStyle } = useAppStore();
+  const { currentCity, currentPoseStyle, setCurrentPoseStyle, currentUser } = useAppStore();
   const [selectedLandmark, setSelectedLandmark] = useState<Landmark | null>(null);
   const [generating, setGenerating] = useState(false);
   const [images, setImages] = useState<{ pose: string; imageUrl: string }[]>([]);
@@ -38,6 +38,7 @@ export function PoseGenerator({ outfitDescription, disabled }: PoseGeneratorProp
           cityName: currentCity.name,
           landmark: selectedLandmark,
           poseStyle: currentPoseStyle,
+          userId: currentUser?.id,
         }),
       });
 

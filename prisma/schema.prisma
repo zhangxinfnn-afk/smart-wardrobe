@@ -3,19 +3,25 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
-  url      = "file:./dev.db"
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
 model User {
-  id        String   @id @default(cuid())
-  name      String
-  avatar    String?
-  gender    String?
-  clothes   ClothingItem[]
-  outfits   Outfit[]
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id          String   @id @default(cuid())
+  name        String
+  avatar      String?
+  gender      String?   // male, female, other
+  frontPhoto  String?   // 正面人物照片 URL（必填）
+  sidePhoto   String?   // 侧面人物照片 URL（可选）
+  height      Float?    // 身高 cm
+  weight      Float?    // 体重 kg
+  age         Int?      // 年龄
+  bodyType    String?   // 身材类型: SLIM, FIT, AVERAGE, PLUMP, MUSCULAR, PETITE, TALL
+  clothes     ClothingItem[]
+  outfits     Outfit[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }
 
 model ClothingItem {

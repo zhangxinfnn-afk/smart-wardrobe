@@ -1,14 +1,16 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Plus, Upload, Search, Filter, Users } from 'lucide-react';
+import { Plus, Upload, Search, Settings, UserPlus, ChevronDown, User } from 'lucide-react';
 import { CategoryTabs } from '@/components/closet/CategoryTabs';
 import { ClothingGrid } from '@/components/closet/ClothingGrid';
 import { UploadModal } from '@/components/closet/UploadModal';
 import { BatchUploadModal } from '@/components/closet/BatchUploadModal';
+import { UserCreateModal } from '@/components/home/UserCreateModal';
+import { UserEditModal } from '@/components/home/UserEditModal';
 import { useAppStore } from '@/stores/useAppStore';
 import { useClosetStore } from '@/stores/useClosetStore';
-import type { ClothingItem, ClothingFormData, Category, Season, Style, User } from '@/types';
+import type { ClothingItem, ClothingFormData, Category, Season, Style, User as UserType } from '@/types';
 import { SEASONS, STYLES } from '@/types';
 
 export default function ClosetPage() {
@@ -32,8 +34,8 @@ export default function ClosetPage() {
 
   const [items, setItems] = useState<ClothingItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [showNewUser, setShowNewUser] = useState(false);
-  const [newUserName, setNewUserName] = useState('');
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [editUser, setEditUser] = useState<UserType | null>(null);
 
   // Fetch users
   const fetchUsers = useCallback(async () => {
@@ -149,20 +151,16 @@ export default function ClosetPage() {
     fetchClothes();
   };
 
-  const handleCreateUser = async () => {
-    if (!newUserName.trim()) return;
+  const handleUserCreated = (user: UserType) => {
+    addUser(user);
+    setCurrentUser(user);
+    fetchClothes();
+  };
 
-    const formData = new FormData();
-    formData.append('name', newUserName.trim());
-
-    const res = await fetch('/api/users', { method: 'POST', body: formData });
-    if (res.ok) {
-      const user = await res.json();
-      addUser(user);
-      setCurrentUser(user);
-      setNewUserName('');
-      setShowNewUser(false);
-    }
+  const handleUserUpdated = (updatedUser: UserType) => {
+    // 更新 store 中的用户列表
+    setUsers(users.map((u) => (u.id === updatedUser.id ? updatedUser : u)));
+    setCurrentUser(updatedUser);
   };
 
   const editItemData = editingItem
@@ -194,55 +192,48 @@ export default function ClosetPage() {
             </div>
 
             <div className="flex items-center gap-2">
-              {/* User switcher */}
-              <div className="relative">
-                <button
-                  onClick={() => setShowNewUser(!showNewUser)}
-                  className="flex items-center gap-2 px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors text-sm"
-                >
-                  <Users className="w-4 h-4" />
-                  <span className="hidden sm:inline">
-                    {currentUser?.name || '选择用户'}
-                  </span>
-                </button>
-
-                {showNewUser && (
-                  <div className="absolute top-full right-0 mt-1 w-56 bg-white dark:bg-gray-800 rounded-xl shadow-xl border border-gray-200 dark:border-gray-700 p-2 z-10">
+              {/* User dropdown select */}
+              <div className="flex items-center gap-1">
+                <div className="relative">
+                  <select
+                    value={currentUser?.id || ''}
+                    onChange={(e) => {
+                      const user = users.find((u) => u.id === e.target.value);
+                      if (user) setCurrentUser(user);
+                    }}
+                    className="appearance-none pl-3 pr-8 py-2 rounded-lg bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-sm font-medium text-gray-900 dark:text-white cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors outline-none focus:ring-2 focus:ring-purple-500"
+                  >
+                    {users.length === 0 && (
+                      <option value="">请先创建用户</option>
+                    )}
                     {users.map((user) => (
-                      <button
-                        key={user.id}
-                        onClick={() => {
-                          setCurrentUser(user);
-                          setShowNewUser(false);
-                        }}
-                        className="w-full text-left px-3 py-2 rounded-lg text-sm hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-                      >
+                      <option key={user.id} value={user.id}>
                         {user.name}
-                        {currentUser?.id === user.id && ' ✓'}
-                      </button>
+                      </option>
                     ))}
-                    <div className="border-t border-gray-200 dark:border-gray-700 mt-1 pt-1">
-                      <div className="flex gap-1">
-                        <input
-                          type="text"
-                          value={newUserName}
-                          onChange={(e) => setNewUserName(e.target.value)}
-                          placeholder="新用户名称"
-                          className="flex-1 px-2 py-1.5 text-sm rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 outline-none"
-                          onKeyDown={(e) =>
-                            e.key === 'Enter' && handleCreateUser()
-                          }
-                        />
-                        <button
-                          onClick={handleCreateUser}
-                          className="px-3 py-1.5 text-sm bg-purple-600 text-white rounded-lg hover:bg-purple-700"
-                        >
-                          添加
-                        </button>
-                      </div>
-                    </div>
-                  </div>
+                  </select>
+                  <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+                </div>
+
+                {/* Settings button */}
+                {currentUser && (
+                  <button
+                    onClick={() => setEditUser(currentUser)}
+                    className="p-2 rounded-lg text-gray-400 hover:text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-900/20 transition-colors"
+                    title="编辑用户信息"
+                  >
+                    <Settings className="w-4 h-4" />
+                  </button>
                 )}
+
+                {/* Add user button */}
+                <button
+                  onClick={() => setShowCreateModal(true)}
+                  className="p-2 rounded-lg text-gray-400 hover:text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-900/20 transition-colors"
+                  title="添加新用户"
+                >
+                  <UserPlus className="w-4 h-4" />
+                </button>
               </div>
 
               {/* Upload buttons */}
@@ -326,27 +317,18 @@ export default function ClosetPage() {
       <div className="px-4 md:px-8 py-6">
         {!currentUser ? (
           <div className="text-center py-20">
-            <Users className="w-16 h-16 mx-auto text-gray-300 dark:text-gray-600 mb-4" />
+            <User className="w-16 h-16 mx-auto text-gray-300 dark:text-gray-600 mb-4" />
             <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
               还没有用户
             </h2>
             <p className="text-gray-500 mb-4">请先创建一个用户来管理衣帽间</p>
-            <div className="flex items-center justify-center gap-2">
-              <input
-                type="text"
-                value={newUserName}
-                onChange={(e) => setNewUserName(e.target.value)}
-                placeholder="输入名称"
-                className="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm outline-none focus:ring-2 focus:ring-purple-500"
-                onKeyDown={(e) => e.key === 'Enter' && handleCreateUser()}
-              />
-              <button
-                onClick={handleCreateUser}
-                className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 text-sm font-medium"
-              >
-                创建
-              </button>
-            </div>
+            <button
+              onClick={() => setShowCreateModal(true)}
+              className="px-6 py-2.5 bg-purple-600 text-white rounded-xl hover:bg-purple-700 text-sm font-medium transition-colors"
+            >
+              <UserPlus className="w-4 h-4 inline mr-1.5" />
+              创建用户
+            </button>
           </div>
         ) : (
           <ClothingGrid
@@ -400,6 +382,22 @@ export default function ClosetPage() {
         onClose={() => setShowBatchUpload(false)}
         onSave={handleBatchSave}
       />
+
+      {/* User Create/Edit Modals */}
+      <UserCreateModal
+        isOpen={showCreateModal}
+        onClose={() => setShowCreateModal(false)}
+        onCreated={handleUserCreated}
+      />
+
+      {editUser && (
+        <UserEditModal
+          user={editUser}
+          isOpen={!!editUser}
+          onClose={() => setEditUser(null)}
+          onUpdated={handleUserUpdated}
+        />
+      )}
     </div>
   );
 }

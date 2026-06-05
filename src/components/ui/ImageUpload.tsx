@@ -58,18 +58,18 @@ export function ImageUpload({
         isDragActive
           ? 'border-purple-400 bg-purple-50 dark:bg-purple-900/20'
           : 'border-gray-300 hover:border-purple-300 hover:bg-gray-50 dark:border-gray-600 dark:hover:border-purple-600 dark:hover:bg-gray-800',
-        displayUrl ? 'p-2' : 'p-8',
+        displayUrl ? 'p-0' : 'p-2',
         className
       )}
     >
       <input {...getInputProps()} />
 
       {displayUrl ? (
-        <div className="relative">
+        <div className="relative h-full">
           <img
             src={displayUrl}
             alt="Preview"
-            className="w-full h-48 object-cover rounded-lg"
+            className="w-full h-full object-cover rounded-lg"
           />
           <button
             type="button"
@@ -80,17 +80,16 @@ export function ImageUpload({
           </button>
         </div>
       ) : (
-        <div className="flex flex-col items-center gap-2 text-gray-500 dark:text-gray-400">
+        <div className="flex flex-col items-center justify-center gap-1 text-gray-400 dark:text-gray-500 h-full min-h-[80px]">
           {isDragActive ? (
             <>
-              <Upload className="w-8 h-8 text-purple-500" />
-              <p className="text-sm font-medium text-purple-600">释放文件以上传</p>
+              <Upload className="w-6 h-6 text-purple-500" />
+              <p className="text-xs font-medium text-purple-600">释放上传</p>
             </>
           ) : (
             <>
-              <ImageIcon className="w-8 h-8" />
-              <p className="text-sm font-medium">拖拽图片到此处或点击上传</p>
-              <p className="text-xs">支持 PNG, JPG, WebP，最大 10MB</p>
+              <ImageIcon className="w-5 h-5" />
+              <p className="text-xs">点击或拖拽上传</p>
             </>
           )}
         </div>

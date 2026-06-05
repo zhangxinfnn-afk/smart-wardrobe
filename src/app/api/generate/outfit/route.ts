@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { buildOutfitPrompt, parseAIResponse } from '@/lib/ai';
 import { generateImage } from '@/lib/replicate';
-import type { WeatherData, Style, ClothingItem } from '@/types';
+import type { WeatherData, Style, ClothingItem, User } from '@/types';
 
 export async function POST(request: NextRequest) {
   try {
@@ -53,8 +53,9 @@ export async function POST(request: NextRequest) {
     const clothesToUse =
       seasonFiltered.length >= 3 ? seasonFiltered : parsedClothes;
 
-    // Build prompt and call Claude API
-    const prompt = buildOutfitPrompt(clothesToUse, weather, style, user.name);
+    // Build prompt and call Claude API (pass full user object for body data)
+    const userObj = user as unknown as User;
+    const prompt = buildOutfitPrompt(clothesToUse, weather, style, userObj);
 
     let outfitData: {
       selectedItems: { id: string; reason: string }[];
@@ -94,7 +95,7 @@ export async function POST(request: NextRequest) {
       }
     } else {
       // Mock AI recommendation (no API key configured)
-      outfitData = generateMockOutfit(clothesToUse, weather, style);
+      outfitData = generateMockOutfit(clothesToUse, weather, style, userObj);
     }
 
     // Generate image with Stable Diffusion
@@ -142,7 +143,8 @@ export async function POST(request: NextRequest) {
 function generateMockOutfit(
   clothes: ClothingItem[],
   weather: WeatherData,
-  style: string
+  style: string,
+  user?: User
 ) {
   const tops = clothes.filter((c) => c.category === 'TOP' || c.category === 'DRESS');
   const bottoms = clothes.filter((c) => c.category === 'BOTTOM');
@@ -172,8 +174,18 @@ function generateMockOutfit(
   if (shoe) descParts.push(`脚穿${shoe.name}`);
   if (acc) descParts.push(`配以${acc.name}`);
 
-  const outfitDescription = descParts.join('，') + `，整体呈现${style}风格，非常适合${weather.description}的${weather.temperature}°C天气`;
-  const sdPrompt = `A stylish Asian fashion model wearing ${outfitDescription}, full body shot, ${style} style outfit, ${weather.description} weather, natural outdoor lighting, fashion photography, high quality, 8k, detailed clothing texture`;
+  // 根据用户身材调整描述
+  const heightText = user?.height ? `${user.height}cm` : '';
+  const bodyText = user?.bodyType || '标准';
+  const appearance = `${heightText} ${bodyText}身材`;
+
+  const outfitDescription = descParts.join('，') +
+    `，整体呈现${style}风格，非常适合${appearance}的${user?.name || '用户'}在${weather.description}的${weather.temperature}°C天气穿着`;
+
+  // 根据用户性别和外貌构建 SD prompt
+  const genderEn = user?.gender === 'female' ? 'woman' : user?.gender === 'male' ? 'man' : 'person';
+  const ageStr = user?.age ? ` ${user.age}-year-old` : '';
+  const sdPrompt = `A${ageStr} ${genderEn} with ${appearance} body type wearing ${outfitDescription}, full body shot, ${style} style outfit, ${weather.description} weather, natural outdoor lighting, fashion photography, high quality, 8k, detailed clothing texture`;
 
   return { selectedItems, outfitDescription, sdPrompt };
 }

@@ -13,7 +13,6 @@ export default function HomePage() {
   const { setUsers, setCurrentUser, currentUser } = useAppStore();
   const [outfit, setOutfit] = useState<GenerateOutfitResponse | null>(null);
 
-  // Fetch users on mount
   useEffect(() => {
     async function fetchUsers() {
       try {
@@ -34,18 +33,20 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen">
-      {/* Top Bar - Weather + Profile */}
+      {/* Top Bar - Weather (full width, compact) */}
       <div className="sticky top-0 z-30 bg-white/80 dark:bg-gray-950/80 backdrop-blur-md border-b border-gray-200 dark:border-gray-800">
-        <div className="px-4 md:px-8 py-4">
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-            <CityWeather />
-            <ProfileSwitcher />
-          </div>
+        <div className="px-4 md:px-6 py-2.5">
+          <CityWeather />
         </div>
       </div>
 
       {/* Main Content */}
-      <div className="px-4 md:px-8 py-6 max-w-7xl mx-auto">
+      <div className="px-4 md:px-6 py-5 max-w-7xl mx-auto">
+        {/* Profile switcher above style selector */}
+        <div className="mb-5">
+          <ProfileSwitcher />
+        </div>
+
         {/* Style Selector */}
         <div className="mb-8">
           <StyleSelector />
@@ -89,7 +90,7 @@ export default function HomePage() {
           </div>
         </div>
 
-        {/* Empty state for first-time users */}
+        {/* Empty state */}
         {!outfit && (
           <div className="mt-8 text-center py-12">
             <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-gradient-to-br from-purple-100 to-amber-100 dark:from-purple-900/20 dark:to-amber-900/20 flex items-center justify-center">
