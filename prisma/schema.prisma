@@ -1,0 +1,58 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model User {
+  id        String   @id @default(cuid())
+  name      String
+  avatar    String?
+  gender    String?
+  clothes   ClothingItem[]
+  outfits   Outfit[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model ClothingItem {
+  id           String   @id @default(cuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category     String   // TOP, BOTTOM, DRESS, OUTERWEAR, SHOES, BAG, SCARF, BELT, HAT, JEWELRY, GLASSES, OTHER
+  subcategory  String?
+  name         String
+  color        String?
+  colors       String   @default("[]") // JSON array stored as string for SQLite
+  material     String?
+  season       String   @default("[]") // JSON array: ["SPRING","SUMMER","AUTUMN","WINTER"]
+  style        String   @default("[]") // JSON array: ["CASUAL","FORMAL",...]
+  brand        String?
+  imageUrl     String
+  thumbnailUrl String?
+  isFavorite   Boolean  @default(false)
+  notes        String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model Outfit {
+  id             String   @id @default(cuid())
+  userId         String
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name           String?
+  itemIds        String   @default("[]") // JSON array of clothing item IDs
+  style          String
+  season         String
+  weatherType    String?
+  cityName       String?
+  temperature    Float?
+  prompt         String?
+  outfitDesc     String?
+  generatedImage String?
+  poseImages     String   @default("[]") // JSON array
+  createdAt      DateTime @default(now())
+}

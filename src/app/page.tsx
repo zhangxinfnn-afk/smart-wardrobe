@@ -1,65 +1,110 @@
-import Image from "next/image";
+'use client';
 
-export default function Home() {
+import { useState, useEffect } from 'react';
+import { CityWeather } from '@/components/home/CityWeather';
+import { ProfileSwitcher } from '@/components/home/ProfileSwitcher';
+import { StyleSelector } from '@/components/home/StyleSelector';
+import { OutfitGenerator } from '@/components/home/OutfitGenerator';
+import { PoseGenerator } from '@/components/home/PoseGenerator';
+import { useAppStore } from '@/stores/useAppStore';
+import type { GenerateOutfitResponse } from '@/types';
+
+export default function HomePage() {
+  const { setUsers, setCurrentUser, currentUser } = useAppStore();
+  const [outfit, setOutfit] = useState<GenerateOutfitResponse | null>(null);
+
+  // Fetch users on mount
+  useEffect(() => {
+    async function fetchUsers() {
+      try {
+        const res = await fetch('/api/users');
+        if (res.ok) {
+          const data = await res.json();
+          setUsers(data);
+          if (data.length > 0 && !currentUser) {
+            setCurrentUser(data[0]);
+          }
+        }
+      } catch (error) {
+        console.error('Failed to fetch users:', error);
+      }
+    }
+    fetchUsers();
+  }, []);
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+    <div className="min-h-screen">
+      {/* Top Bar - Weather + Profile */}
+      <div className="sticky top-0 z-30 bg-white/80 dark:bg-gray-950/80 backdrop-blur-md border-b border-gray-200 dark:border-gray-800">
+        <div className="px-4 md:px-8 py-4">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <CityWeather />
+            <ProfileSwitcher />
+          </div>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
+      </div>
+
+      {/* Main Content */}
+      <div className="px-4 md:px-8 py-6 max-w-7xl mx-auto">
+        {/* Style Selector */}
+        <div className="mb-8">
+          <StyleSelector />
+        </div>
+
+        {/* Two-column layout */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          {/* Feature 1: AI Outfit Generation */}
+          <div>
+            <div className="mb-4">
+              <h2 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-purple-500" />
+                功能一：智能穿搭搭配
+              </h2>
+              <p className="text-sm text-gray-500 mt-1">
+                根据 {currentUser?.name || '选择的对象'} 的衣帽间，结合
+                天气和风格，AI 自动生成穿搭
+              </p>
+            </div>
+            <OutfitGenerator
+              onOutfitGenerated={setOutfit}
+              currentOutfit={outfit}
             />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+          </div>
+
+          {/* Feature 2: Pose Generation */}
+          <div>
+            <div className="mb-4">
+              <h2 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-amber-500" />
+                功能二：景点拍照姿势
+              </h2>
+              <p className="text-sm text-gray-500 mt-1">
+                选择城市景点，AI 生成穿搭 + 景点 + 姿势的拍照参考
+              </p>
+            </div>
+            <PoseGenerator
+              outfitDescription={outfit?.outfitDescription || null}
+              disabled={!outfit}
+            />
+          </div>
         </div>
-      </main>
+
+        {/* Empty state for first-time users */}
+        {!outfit && (
+          <div className="mt-8 text-center py-12">
+            <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-gradient-to-br from-purple-100 to-amber-100 dark:from-purple-900/20 dark:to-amber-900/20 flex items-center justify-center">
+              <span className="text-4xl">👆</span>
+            </div>
+            <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
+              开始你的智能穿搭之旅
+            </h3>
+            <p className="text-gray-500 max-w-md mx-auto">
+              先到衣帽间添加你的衣物，然后回到这里，选择城市、风格，
+              点击「智能搭配」按钮，AI 将为你生成专属穿搭！
+            </p>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

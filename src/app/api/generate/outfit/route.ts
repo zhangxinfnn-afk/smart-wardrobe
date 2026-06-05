@@ -1,0 +1,179 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { prisma } from '@/lib/prisma';
+import { buildOutfitPrompt, parseAIResponse } from '@/lib/ai';
+import { generateImage } from '@/lib/replicate';
+import type { WeatherData, Style, ClothingItem } from '@/types';
+
+export async function POST(request: NextRequest) {
+  try {
+    const body = await request.json();
+    const { userId, cityName, style, weather } = body as {
+      userId: string;
+      cityName: string;
+      style: Style;
+      weather: WeatherData;
+    };
+
+    if (!userId) {
+      return NextResponse.json({ error: 'userId is required' }, { status: 400 });
+    }
+
+    // Get user
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    if (!user) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 });
+    }
+
+    // Get user's clothes
+    const clothes = await prisma.clothingItem.findMany({
+      where: { userId },
+    });
+
+    if (clothes.length === 0) {
+      return NextResponse.json(
+        { error: '衣帽间为空，请先添加衣物' },
+        { status: 400 }
+      );
+    }
+
+    const parsedClothes = clothes.map((item) => ({
+      ...item,
+      colors: JSON.parse(item.colors || '[]') as string[],
+      season: JSON.parse(item.season || '[]') as string[],
+      style: JSON.parse(item.style || '[]') as string[],
+    })) as unknown as ClothingItem[];
+
+    // Filter clothes by season and style
+    const seasonFiltered = parsedClothes.filter(
+      (item) =>
+        item.season.length === 0 ||
+        item.season.includes(weather.season)
+    );
+
+    const clothesToUse =
+      seasonFiltered.length >= 3 ? seasonFiltered : parsedClothes;
+
+    // Build prompt and call Claude API
+    const prompt = buildOutfitPrompt(clothesToUse, weather, style, user.name);
+
+    let outfitData: {
+      selectedItems: { id: string; reason: string }[];
+      outfitDescription: string;
+      sdPrompt: string;
+    };
+
+    const anthropicKey = process.env.ANTHROPIC_API_KEY;
+    if (anthropicKey && anthropicKey !== 'your_anthropic_key') {
+      // Real AI call
+      const response = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': anthropicKey,
+          'anthropic-version': '2023-06-01',
+        },
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-6',
+          max_tokens: 1024,
+          messages: [{ role: 'user', content: prompt }],
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Claude API error: ${response.status}`);
+      }
+
+      const data = await response.json();
+      const text = data.content[0]?.text || '';
+      const parsed = parseAIResponse(text);
+
+      if (parsed) {
+        outfitData = parsed as typeof outfitData;
+      } else {
+        throw new Error('Failed to parse AI response');
+      }
+    } else {
+      // Mock AI recommendation (no API key configured)
+      outfitData = generateMockOutfit(clothesToUse, weather, style);
+    }
+
+    // Generate image with Stable Diffusion
+    let generatedImageUrl: string | null = null;
+    try {
+      generatedImageUrl = await generateImage(outfitData.sdPrompt);
+    } catch {
+      console.log('Image generation failed, continuing without image');
+    }
+
+    // Save outfit to database
+    const outfit = await prisma.outfit.create({
+      data: {
+        userId,
+        name: `${weather.city} ${style}穿搭`,
+        itemIds: JSON.stringify(outfitData.selectedItems.map((i) => i.id)),
+        style: style,
+        season: weather.season,
+        weatherType: weather.description,
+        cityName,
+        temperature: weather.temperature,
+        prompt: outfitData.sdPrompt,
+        outfitDesc: outfitData.outfitDescription,
+        generatedImage: generatedImageUrl,
+        poseImages: JSON.stringify([]),
+      },
+    });
+
+    return NextResponse.json({
+      id: outfit.id,
+      selectedItems: outfitData.selectedItems,
+      outfitDescription: outfitData.outfitDescription,
+      sdPrompt: outfitData.sdPrompt,
+      generatedImageUrl,
+    });
+  } catch (error) {
+    console.error('POST /api/generate/outfit error:', error);
+    return NextResponse.json(
+      { error: '搭配生成失败，请重试' },
+      { status: 500 }
+    );
+  }
+}
+
+function generateMockOutfit(
+  clothes: ClothingItem[],
+  weather: WeatherData,
+  style: string
+) {
+  const tops = clothes.filter((c) => c.category === 'TOP' || c.category === 'DRESS');
+  const bottoms = clothes.filter((c) => c.category === 'BOTTOM');
+  const shoes = clothes.filter((c) => c.category === 'SHOES');
+  const accessories = clothes.filter((c) =>
+    ['SCARF', 'BELT', 'HAT', 'JEWELRY', 'GLASSES', 'BAG'].includes(c.category)
+  );
+
+  const pick = (arr: ClothingItem[]) =>
+    arr.length > 0 ? arr[Math.floor(Math.random() * arr.length)] : null;
+
+  const top = pick(tops);
+  const bottom = pick(bottoms);
+  const shoe = pick(shoes);
+  const acc = pick(accessories);
+
+  const selectedItems = [top, bottom, shoe, acc]
+    .filter(Boolean)
+    .map((item) => ({
+      id: item!.id,
+      reason: '完美匹配今日风格与天气',
+    }));
+
+  const descParts = [];
+  if (top) descParts.push(`${top.color || ''}${top.name}`);
+  if (bottom) descParts.push(`搭配${bottom.name}`);
+  if (shoe) descParts.push(`脚穿${shoe.name}`);
+  if (acc) descParts.push(`配以${acc.name}`);
+
+  const outfitDescription = descParts.join('，') + `，整体呈现${style}风格，非常适合${weather.description}的${weather.temperature}°C天气`;
+  const sdPrompt = `A stylish Asian fashion model wearing ${outfitDescription}, full body shot, ${style} style outfit, ${weather.description} weather, natural outdoor lighting, fashion photography, high quality, 8k, detailed clothing texture`;
+
+  return { selectedItems, outfitDescription, sdPrompt };
+}
