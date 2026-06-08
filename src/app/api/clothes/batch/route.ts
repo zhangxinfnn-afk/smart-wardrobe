@@ -4,6 +4,7 @@ import { createClothingItem } from '@/lib/db';
 export async function POST(request: NextRequest) {
   try {
     const formData = await request.formData();
+    const files = formData.getAll('images') as File[];
     const dataStr = formData.get('data') as string;
     if (!dataStr) return NextResponse.json({ error: 'data required' }, { status: 400 });
 
@@ -12,6 +13,17 @@ export async function POST(request: NextRequest) {
     const results = [];
     for (let i = 0; i < itemDataList.length; i++) {
       const itemData = itemDataList[i] || {};
+      const file = files[i];
+
+      // 图片转 base64
+      let imageUrl = '';
+      if (file) {
+        const bytes = await file.arrayBuffer();
+        const base64 = Buffer.from(bytes).toString('base64');
+        const mime = file.type || 'image/jpeg';
+        imageUrl = `data:${mime};base64,${base64}`;
+      }
+
       const item = await createClothingItem({
         userId,
         category: itemData.category || 'TOP',
@@ -21,7 +33,7 @@ export async function POST(request: NextRequest) {
         colors: itemData.colors || [],
         season: itemData.season || [],
         style: itemData.style || [],
-        imageUrl: itemData.imageUrl || '',
+        imageUrl,
       });
       results.push(item);
     }

@@ -41,12 +41,23 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const formData = await request.formData();
+    const imageFile = formData.get('image') as File | null;
     const dataStr = formData.get('data') as string;
     if (!dataStr) {
       return NextResponse.json({ error: 'data is required' }, { status: 400 });
     }
 
     const data = JSON.parse(dataStr);
+
+    // 图片转 base64 存储（Netlify 无文件系统）
+    let imageUrl = data.imageUrl || '';
+    if (imageFile) {
+      const bytes = await imageFile.arrayBuffer();
+      const base64 = Buffer.from(bytes).toString('base64');
+      const mime = imageFile.type || 'image/jpeg';
+      imageUrl = `data:${mime};base64,${base64}`;
+    }
+
     const item = await createClothingItem({
       userId: data.userId,
       category: data.category,
@@ -58,7 +69,7 @@ export async function POST(request: NextRequest) {
       season: data.season || [],
       style: data.style || [],
       brand: data.brand || null,
-      imageUrl: data.imageUrl || '',
+      imageUrl,
       notes: data.notes || null,
     });
 
