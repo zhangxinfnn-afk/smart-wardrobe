@@ -1,0 +1,9 @@
+[build]
+  command = "npm run build"
+  publish = ".next"
+
+[build.environment]
+  NODE_TLS_REJECT_UNAUTHORIZED = "0"
+
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
