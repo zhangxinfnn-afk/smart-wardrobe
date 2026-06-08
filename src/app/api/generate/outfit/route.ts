@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
+import { getUserById, getClothes, createOutfit } from '@/lib/db';
 import { buildOutfitPrompt, parseAIResponse } from '@/lib/ai';
 import { generateImage } from '@/lib/replicate';
 import type { WeatherData, Style, ClothingItem, User } from '@/types';
@@ -19,28 +19,25 @@ export async function POST(request: NextRequest) {
     }
 
     // Get user
-    const user = await prisma.user.findUnique({ where: { id: userId } });
+    const user = await getUserById(userId);
     if (!user) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
     // Get user's clothes
-    const clothes = await prisma.clothingItem.findMany({
-      where: { userId },
-    });
-
-    if (clothes.length === 0) {
+    const rawClothes = await getClothes(userId);
+    if (rawClothes.length === 0) {
       return NextResponse.json(
         { error: '衣帽间为空，请先添加衣物' },
         { status: 400 }
       );
     }
 
-    const parsedClothes = clothes.map((item) => ({
+    const parsedClothes = (rawClothes as Record<string, unknown>[]).map((item: Record<string, unknown>) => ({
       ...item,
-      colors: JSON.parse(item.colors || '[]') as string[],
-      season: JSON.parse(item.season || '[]') as string[],
-      style: JSON.parse(item.style || '[]') as string[],
+      colors: typeof item.colors === 'string' ? JSON.parse(item.colors as string) : (item.colors || []),
+      season: typeof item.season === 'string' ? JSON.parse(item.season as string) : (item.season || []),
+      style: typeof item.style === 'string' ? JSON.parse(item.style as string) : (item.style || []),
     })) as unknown as ClothingItem[];
 
     // Filter clothes by season and style
@@ -107,21 +104,19 @@ export async function POST(request: NextRequest) {
     }
 
     // Save outfit to database
-    const outfit = await prisma.outfit.create({
-      data: {
-        userId,
-        name: `${weather.city} ${style}穿搭`,
-        itemIds: JSON.stringify(outfitData.selectedItems.map((i) => i.id)),
-        style: style,
-        season: weather.season,
-        weatherType: weather.description,
-        cityName,
-        temperature: weather.temperature,
-        prompt: outfitData.sdPrompt,
-        outfitDesc: outfitData.outfitDescription,
-        generatedImage: generatedImageUrl,
-        poseImages: JSON.stringify([]),
-      },
+    const outfit = await createOutfit({
+      userId,
+      name: `${weather.city} ${style}穿搭`,
+      itemIds: outfitData.selectedItems.map((i) => i.id),
+      style: style,
+      season: weather.season,
+      weatherType: weather.description,
+      cityName,
+      temperature: weather.temperature,
+      prompt: outfitData.sdPrompt,
+      outfitDesc: outfitData.outfitDescription,
+      generatedImage: generatedImageUrl,
+      poseImages: [],
     });
 
     return NextResponse.json({

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
+import { getUserById } from '@/lib/db';
 import { buildPosePrompt } from '@/lib/ai';
 import { generatePoseImages } from '@/lib/replicate';
 import type { PoseStyle, User } from '@/types';
@@ -25,7 +25,7 @@ export async function POST(request: NextRequest) {
     // 获取用户数据（如果有 userId）
     let user: User | null = null;
     if (userId) {
-      const dbUser = await prisma.user.findUnique({ where: { id: userId } });
+      const dbUser = await getUserById(userId);
       user = dbUser as unknown as User | null;
     }
 
