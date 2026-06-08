@@ -50,8 +50,7 @@ export async function updateUser(id: string, data: Record<string, unknown>) {
 
   for (const [key, value] of Object.entries(data)) {
     if (value !== undefined) {
-      // camelCase → PascalCase for Prisma schema columns
-      const col = `"${key.charAt(0).toUpperCase() + key.slice(1)}"`;
+      const col = `"${key}"`;
       sets.push(`${col} = $${i++}`);
       vals.push(value);
     }
@@ -122,7 +121,8 @@ export async function updateClothingItem(id: string, data: Record<string, unknow
 
   for (const [key, value] of Object.entries(data)) {
     if (value !== undefined) {
-      const col = `"${key.charAt(0).toUpperCase() + key.slice(1)}"`;
+      // Prisma 列名和 JS 字段名一致（camelCase），直接使用
+      const col = `"${key}"`;
       if (Array.isArray(value)) {
         sets.push(`${col} = $${i++}`);
         vals.push(JSON.stringify(value));
