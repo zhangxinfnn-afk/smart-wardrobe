@@ -2,12 +2,13 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   typescript: {
-    // 忽略构建时的类型错误（运行时正常工作）
     ignoreBuildErrors: true,
   },
   eslint: {
     ignoreDuringBuilds: true,
   },
+  // Prisma 需要作为外部包（不被打包进 bundle）
+  serverExternalPackages: ['@prisma/client', 'prisma'],
 };
 
 export default nextConfig;
