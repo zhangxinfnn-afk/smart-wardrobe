@@ -178,20 +178,21 @@ function generateMockOutfit(
   const outfitDescription = descParts.join('，') +
     `，整体呈现${style}风格，非常适合${appearance}的${user?.name || '用户'}在${weather.description}的${weather.temperature}°C天气穿着`;
 
-  // 根据用户性别和外貌构建 SD prompt（去掉文件名后缀）
-  const genderEn = user?.gender === 'female' ? 'a woman' : user?.gender === 'male' ? 'a man' : 'a person';
-  const ageStr = user?.age ? `${user.age} year old` : '';
-  const heightStr = user?.height ? `${user.height}cm tall` : '';
-  const bodyMap: Record<string, string> = { SLIM:'slim', FIT:'fit', AVERAGE:'average', PLUMP:'curvy', MUSCULAR:'muscular', PETITE:'petite', TALL:'tall' };
-  const bodyStr = user?.bodyType && bodyMap[user.bodyType] ? bodyMap[user.bodyType] : '';
+  // DALL-E prompt：描述人物穿着指定衣服的时尚照片
+  const genderEn = user?.gender === 'female' ? 'a Chinese woman' : user?.gender === 'male' ? 'a Chinese man' : 'a person';
+  const ageStr = user?.age ? ` ${user.age}-year-old` : '';
+  const heightStr = user?.height ? ` ${user.height}cm tall` : '';
+  const bodyMap: Record<string, string> = { SLIM:'slim', FIT:'fit athletic', AVERAGE:'average', PLUMP:'curvy', MUSCULAR:'muscular', PETITE:'petite short', TALL:'tall' };
+  const bodyStr = user?.bodyType && bodyMap[user.bodyType] ? ` with ${bodyMap[user.bodyType]} build` : '';
 
-  // 清理衣物名称（去掉文件后缀和特殊字符）
-  const cleanName = (s: string) => s.replace(/\.[^.]+$/, '').replace(/[~_\-\.]/g, ' ').trim();
+  // 清理衣物名称
+  const cleanName = (s: string) => s.replace(/\.[^.]+$/, '').replace(/[~_\-]/g, ' ').replace(/\s+/g, ' ').trim();
 
   const clothingDesc = descParts.map(p => cleanName(p)).join(', ');
-  const appearanceParts = [ageStr, heightStr, bodyStr].filter(Boolean).join(', ');
+  const appearanceDesc = [ageStr, heightStr, bodyStr].filter(Boolean).join(', ');
 
-  const sdPrompt = `Fashion photo of ${genderEn}${appearanceParts ? ', ' + appearanceParts : ''}, wearing ${clothingDesc}, ${style} casual outfit, full body shot, standing pose, ${weather.description} weather background, outdoor street style photography, natural lighting, sharp focus`;
+  // DALL-E 优化 prompt（英文）
+  const sdPrompt = `A full-body fashion photo of ${genderEn}${appearanceDesc ? ', ' + appearanceDesc : ''}, wearing ${clothingDesc}. ${style} casual chic outfit. Standing pose, ${weather.description} weather outdoor background, street style fashion photography, natural daylight, sharp focus, editorial quality, full body visible from head to toe`;
 
   return { selectedItems, outfitDescription, sdPrompt };
 }

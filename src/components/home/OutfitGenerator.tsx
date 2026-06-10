@@ -267,6 +267,16 @@ function OutfitCanvas({ outfit, styleLabel }: { outfit: GenerateOutfitResponse; 
     draw();
   }, [clothes, loading, currentUser, styleLabel]);
 
+  // 有 DALL-E 生成的图片，直接展示
+  if (outfit.generatedImageUrl) {
+    return (
+      <div className="aspect-[3/4] relative">
+        <img src={outfit.generatedImageUrl} alt="AI 穿搭效果图" className="w-full h-full object-cover" />
+        <div className="absolute bottom-2 left-2 text-[10px] text-white/70 bg-black/40 px-2 py-1 rounded">DALL-E AI 生成</div>
+      </div>
+    );
+  }
+
   if (loading) {
     return <div className="aspect-[3/4] bg-gray-100 dark:bg-gray-700 flex items-center justify-center">
       <div className="flex flex-col items-center gap-2">
