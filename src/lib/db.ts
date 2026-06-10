@@ -1,4 +1,5 @@
 import { neon } from '@neondatabase/serverless';
+import { randomUUID } from 'crypto';
 
 // Neon SQL 客户端 - 使用 HTTP 连接，完美适配 serverless
 function getSql() {
@@ -30,7 +31,7 @@ export async function createUser(data: {
   bodyType?: string | null;
 }) {
   const sql = getSql();
-  const id = crypto.randomUUID();
+  const id = randomUUID();
   const now = new Date().toISOString();
   const rows = await sql`
     INSERT INTO "User" (id, name, gender, "frontPhoto", "sidePhoto", height, weight, age, "bodyType", "createdAt", "updatedAt")
@@ -95,7 +96,7 @@ export async function createClothingItem(data: {
   notes?: string | null;
 }) {
   const sql = getSql();
-  const id = crypto.randomUUID();
+  const id = randomUUID();
   const now = new Date().toISOString();
   const rows = await sql`
     INSERT INTO "ClothingItem" (id, "userId", category, subcategory, name, color, colors, material, season, style, brand, "imageUrl", notes, "createdAt", "updatedAt", "isFavorite")
@@ -167,7 +168,7 @@ export async function createOutfit(data: {
   poseImages?: unknown[];
 }) {
   const sql = getSql();
-  const id = crypto.randomUUID();
+  const id = randomUUID();
   const now = new Date().toISOString();
   const rows = await sql`
     INSERT INTO "Outfit" (id, "userId", name, "itemIds", style, season, "weatherType", "cityName", temperature, prompt, "outfitDesc", "generatedImage", "poseImages", "createdAt")

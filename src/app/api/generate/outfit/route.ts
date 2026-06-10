@@ -127,9 +127,10 @@ export async function POST(request: NextRequest) {
       generatedImageUrl,
     });
   } catch (error) {
-    console.error('POST /api/generate/outfit error:', error);
+    const msg = error instanceof Error ? error.message : String(error);
+    console.error('POST /api/generate/outfit error:', msg);
     return NextResponse.json(
-      { error: '搭配生成失败，请重试' },
+      { error: `搭配生成失败: ${msg}` },
       { status: 500 }
     );
   }
