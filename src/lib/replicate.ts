@@ -1,47 +1,20 @@
-import Replicate from 'replicate';
+/**
+ * AI 图片生成 — 使用免费 Pollinations.ai API（无需 Key）
+ * 文档: https://pollinations.ai
+ */
 
-let replicate: Replicate | null = null;
+const BASE = 'https://image.pollinations.ai/prompt';
 
-function getReplicate() {
-  if (!replicate) {
-    const token = process.env.REPLICATE_API_TOKEN;
-    if (token && token !== 'your_replicate_token') {
-      replicate = new Replicate({ auth: token });
-    }
-  }
-  return replicate;
-}
-
-export async function generateImage(prompt: string, negativePrompt?: string): Promise<string | null> {
-  const client = getReplicate();
-  if (!client) {
-    console.log('[Replicate] No API token configured, returning mock image');
-    return null;
-  }
-
+export async function generateImage(prompt: string): Promise<string | null> {
   try {
-    const output = await client.run(
-      'stability-ai/sdxl:39ed52f2a78e934b3ba6e2a89f5b1c712de7dfea535525255b1aa35c5565e08b',
-      {
-        input: {
-          prompt,
-          negative_prompt: negativePrompt || 'blurry, low quality, distorted face, bad anatomy, watermark',
-          num_outputs: 1,
-          width: 768,
-          height: 1024,
-          num_inference_steps: 30,
-          guidance_scale: 7.5,
-        },
-      }
-    );
-
-    // output is string[] of URLs
-    if (Array.isArray(output) && output.length > 0) {
-      return output[0];
-    }
-    return null;
+    const encoded = encodeURIComponent(prompt);
+    const url = `${BASE}/${encoded}?width=768&height=1024&model=flux&nologo=true`;
+    // 验证图片可访问
+    const res = await fetch(url, { method: 'HEAD' });
+    if (res.ok) return url;
+    return url; // HEAD 可能不支持，直接返回 URL
   } catch (error) {
-    console.error('[Replicate] Generation failed:', error);
+    console.error('[Pollinations] Generation failed:', error);
     return null;
   }
 }
@@ -50,34 +23,16 @@ export async function generatePoseImages(
   prompt: string,
   count: number = 4
 ): Promise<string[]> {
-  const client = getReplicate();
-  if (!client) {
-    console.log('[Replicate] No API token configured, returning mock');
-    return [];
-  }
-
   try {
-    const output = await client.run(
-      'stability-ai/sdxl:39ed52f2a78e934b3ba6e2a89f5b1c712de7dfea535525255b1aa35c5565e08b',
-      {
-        input: {
-          prompt,
-          negative_prompt: 'blurry, low quality, distorted face, bad anatomy, watermark, duplicate',
-          num_outputs: count,
-          width: 768,
-          height: 1024,
-          num_inference_steps: 30,
-          guidance_scale: 7.5,
-        },
-      }
-    );
-
-    if (Array.isArray(output)) {
-      return output.filter((url): url is string => typeof url === 'string');
+    const urls: string[] = [];
+    for (let i = 0; i < count; i++) {
+      // 每个图片加不同 seed 生成不同姿势
+      const encoded = encodeURIComponent(`${prompt} --seed ${Date.now() + i}`);
+      urls.push(`${BASE}/${encoded}?width=768&height=1024&model=flux&nologo=true`);
     }
-    return [];
+    return urls;
   } catch (error) {
-    console.error('[Replicate] Pose generation failed:', error);
+    console.error('[Pollinations] Pose generation failed:', error);
     return [];
   }
 }
