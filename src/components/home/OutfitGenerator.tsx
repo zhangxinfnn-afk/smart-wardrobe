@@ -143,11 +143,11 @@ export function OutfitGenerator({
   );
 }
 
-import { useState as useStateImg } from 'react';
+import { useState as useStateImg, useEffect as useEffectImg, useRef } from 'react';
 
-/** 穿搭效果图：加载 AI 图片，带 loading 和重试 */
+/** 穿搭效果图：Canvas 绘制人物穿搭可视化 */
 function OutfitImage({
-  imageUrl,
+  imageUrl: _imageUrl,
   outfit,
   styleLabel,
 }: {
@@ -155,73 +155,89 @@ function OutfitImage({
   outfit: GenerateOutfitResponse;
   styleLabel: string;
 }) {
-  const [imgError, setImgError] = useStateImg(false);
-  const [imgLoaded, setImgLoaded] = useStateImg(false);
-  const [retryKey, setRetryKey] = useStateImg(0);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
 
-  if (imageUrl && !imgError) {
-    return (
-      <div className="aspect-[3/4] relative bg-gray-100 dark:bg-gray-700">
-        {!imgLoaded && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center z-10">
-            <div className="w-8 h-8 rounded-full border-2 border-purple-300 border-t-purple-600 animate-spin mb-2" />
-            <span className="text-xs text-gray-400">AI 正在生成效果图...</span>
-          </div>
-        )}
-        <img
-          key={retryKey}
-          src={imageUrl}
-          alt="AI 穿搭效果图"
-          className="w-full h-full object-cover"
-          onLoad={() => setImgLoaded(true)}
-          onError={() => setImgError(true)}
-        />
-        {imgLoaded && (
-          <div className="absolute bottom-2 left-2 right-2 text-[10px] text-white/60 bg-black/30 rounded-lg px-2 py-1">
-            由 AI 生成 · 仅供参考
-          </div>
-        )}
-      </div>
-    );
-  }
+  useEffectImg(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
 
-  // 加载失败 → 占位穿搭卡片
-  const colors = [
-    'from-purple-500 via-pink-500 to-amber-500',
-    'from-blue-500 via-purple-500 to-rose-500',
-    'from-emerald-500 via-teal-500 to-blue-500',
-    'from-amber-500 via-orange-500 to-red-500',
-  ];
-  const bg = colors[Math.floor(styleLabel.length % colors.length)];
+    const W = canvas.width;
+    const H = canvas.height;
+
+    // 背景渐变
+    const gradients = [
+      ['#7c3aed', '#a855f7', '#f59e0b'],
+      ['#2563eb', '#7c3aed', '#f43f5e'],
+      ['#059669', '#14b8a6', '#3b82f6'],
+      ['#d97706', '#ea580c', '#dc2626'],
+    ];
+    const [c1, c2, c3] = gradients[styleLabel.length % gradients.length];
+    const bg = ctx.createLinearGradient(0, 0, W, H);
+    bg.addColorStop(0, c1);
+    bg.addColorStop(0.5, c2);
+    bg.addColorStop(1, c3);
+    ctx.fillStyle = bg;
+    ctx.fillRect(0, 0, W, H);
+
+    // 装饰
+    ctx.fillStyle = 'rgba(255,255,255,0.08)';
+    ctx.beginPath(); ctx.arc(W * 0.8, H * 0.15, 60, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(W * 0.2, H * 0.8, 50, 0, Math.PI * 2); ctx.fill();
+
+    // 人物剪影
+    const cx = W / 2;
+    const cy = H * 0.45;
+    ctx.fillStyle = 'rgba(255,255,255,0.15)';
+    // 头
+    ctx.beginPath(); ctx.arc(cx, cy - 90, 28, 0, Math.PI * 2); ctx.fill();
+    // 身体
+    ctx.beginPath(); ctx.moveTo(cx - 22, cy - 50); ctx.lineTo(cx - 28, cy + 60);
+    ctx.lineTo(cx + 28, cy + 60); ctx.lineTo(cx + 22, cy - 50); ctx.closePath(); ctx.fill();
+    // 腿
+    ctx.fillRect(cx - 20, cy + 60, 12, 80);
+    ctx.fillRect(cx + 8, cy + 60, 12, 80);
+
+    // 衣服高亮区域
+    ctx.fillStyle = 'rgba(255,255,255,0.25)';
+    ctx.beginPath(); ctx.moveTo(cx - 18, cy - 45); ctx.lineTo(cx - 24, cy + 20);
+    ctx.lineTo(cx + 24, cy + 20); ctx.lineTo(cx + 18, cy - 45); ctx.closePath(); ctx.fill();
+
+    // 底部信息
+    ctx.fillStyle = 'rgba(0,0,0,0.3)';
+    ctx.fillRect(0, H - 120, W, 120);
+
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 22px system-ui, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(`✨ ${styleLabel}风格穿搭`, cx, H - 80);
+
+    ctx.font = '13px system-ui, sans-serif';
+    ctx.fillStyle = 'rgba(255,255,255,0.8)';
+    const desc = outfit.outfitDescription.slice(0, 60);
+    ctx.fillText(desc + (outfit.outfitDescription.length > 60 ? '...' : ''), cx, H - 55);
+
+    // 天气标签
+    ctx.font = '12px system-ui, sans-serif';
+    ctx.fillStyle = 'rgba(255,255,255,0.6)';
+    ctx.fillText('由 SmartWardrobe AI 生成', cx, H - 20);
+
+    // 顶部标题
+    ctx.fillStyle = 'rgba(255,255,255,0.7)';
+    ctx.font = '14px system-ui, sans-serif';
+    ctx.textAlign = 'left';
+    ctx.fillText('穿搭效果预览', 24, 36);
+  }, [outfit, styleLabel]);
 
   return (
-    <div className={`aspect-[3/4] relative bg-gradient-to-br ${bg} flex flex-col items-center justify-center p-8 text-white overflow-hidden`}>
-      {/* 装饰圆 */}
-      <div className="absolute top-10 right-10 w-32 h-32 rounded-full bg-white/10" />
-      <div className="absolute bottom-20 left-8 w-24 h-24 rounded-full bg-white/10" />
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-48 h-48 rounded-full border-2 border-white/20" />
-
-      {/* 内容 */}
-      <div className="relative z-10 text-center">
-        <div className="text-5xl mb-4">✨</div>
-        <h3 className="text-xl font-bold mb-2">{styleLabel}风格</h3>
-        <p className="text-sm text-white/80 leading-relaxed max-w-[240px] line-clamp-4">
-          {outfit.outfitDescription}
-        </p>
-        <div className="mt-4 flex items-center justify-center gap-2">
-          <div className="w-2 h-2 rounded-full bg-white/60" />
-          <div className="w-16 h-0.5 bg-white/30" />
-          <div className="w-2 h-2 rounded-full bg-white/60" />
-        </div>
-        {imageUrl && (
-          <button
-            onClick={() => { setImgError(false); setRetryKey(k => k + 1); }}
-            className="mt-3 px-4 py-1.5 text-xs bg-white/20 hover:bg-white/30 rounded-full transition-colors"
-          >
-            重新加载图片
-          </button>
-        )}
-      </div>
+    <div className="aspect-[3/4] relative rounded-2xl overflow-hidden">
+      <canvas
+        ref={canvasRef}
+        width={600}
+        height={800}
+        className="w-full h-full"
+      />
     </div>
   );
 }
