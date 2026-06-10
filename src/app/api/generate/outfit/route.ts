@@ -61,7 +61,7 @@ export async function POST(request: NextRequest) {
     };
 
     const anthropicKey = process.env.ANTHROPIC_API_KEY;
-    if (anthropicKey && anthropicKey !== 'your_anthropic_key') {
+    if (anthropicKey && anthropicKey !== 'your_anthropic_key' && anthropicKey.startsWith('sk-ant-')) {
       // Real AI call
       const response = await fetch('https://api.anthropic.com/v1/messages', {
         method: 'POST',
