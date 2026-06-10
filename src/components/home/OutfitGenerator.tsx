@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Sparkles, RefreshCw, AlertCircle, ImageIcon } from 'lucide-react';
+import { Sparkles, RefreshCw, AlertCircle } from 'lucide-react';
 import { useAppStore } from '@/stores/useAppStore';
 import { Spinner } from '@/components/ui/Spinner';
 import type { Outfit, GenerateOutfitResponse } from '@/types';
@@ -112,21 +112,7 @@ export function OutfitGenerator({
       {currentOutfit && (
         <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 overflow-hidden">
           {/* Generated image */}
-          <div className="aspect-[3/4] relative bg-gray-100 dark:bg-gray-700">
-            {currentOutfit.generatedImageUrl ? (
-              <img
-                src={currentOutfit.generatedImageUrl}
-                alt="AI 生成的穿搭效果"
-                className="w-full h-full object-cover"
-              />
-            ) : (
-              <div className="w-full h-full flex flex-col items-center justify-center text-gray-400">
-                <ImageIcon className="w-12 h-12 mb-2" />
-                <p className="text-sm">AI 效果图生成中...</p>
-                <p className="text-xs mt-1">（配置 Stable Diffusion API 后将显示效果图）</p>
-              </div>
-            )}
-          </div>
+          <OutfitImage imageUrl={currentOutfit.generatedImageUrl} outfit={currentOutfit} styleLabel={styleLabel} />
 
           {/* Outfit description */}
           <div className="p-4">
@@ -153,6 +139,67 @@ export function OutfitGenerator({
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+/** 穿搭效果图：加载 AI 图片，失败时显示精美占位卡片 */
+function OutfitImage({
+  imageUrl,
+  outfit,
+  styleLabel,
+}: {
+  imageUrl: string | null;
+  outfit: GenerateOutfitResponse;
+  styleLabel: string;
+}) {
+  const [imgError, setImgError] = useState(false);
+
+  if (imageUrl && !imgError) {
+    return (
+      <div className="aspect-[3/4] relative bg-gray-100 dark:bg-gray-700">
+        <img
+          src={imageUrl}
+          alt="AI 穿搭效果图"
+          className="w-full h-full object-cover"
+          onError={() => setImgError(true)}
+        />
+        <div className="absolute bottom-2 left-2 right-2 text-[10px] text-white/60 bg-black/30 rounded-lg px-2 py-1">
+          由 AI 生成 · 仅供参考
+        </div>
+      </div>
+    );
+  }
+
+  // 占位穿搭卡片
+  const colors = [
+    'from-purple-500 via-pink-500 to-amber-500',
+    'from-blue-500 via-purple-500 to-rose-500',
+    'from-emerald-500 via-teal-500 to-blue-500',
+    'from-amber-500 via-orange-500 to-red-500',
+  ];
+  const bg = colors[Math.floor(styleLabel.length % colors.length)];
+
+  return (
+    <div className={`aspect-[3/4] relative bg-gradient-to-br ${bg} flex flex-col items-center justify-center p-8 text-white overflow-hidden`}>
+      {/* 装饰圆 */}
+      <div className="absolute top-10 right-10 w-32 h-32 rounded-full bg-white/10" />
+      <div className="absolute bottom-20 left-8 w-24 h-24 rounded-full bg-white/10" />
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-48 h-48 rounded-full border-2 border-white/20" />
+
+      {/* 内容 */}
+      <div className="relative z-10 text-center">
+        <div className="text-5xl mb-4">✨</div>
+        <h3 className="text-xl font-bold mb-2">{styleLabel}风格</h3>
+        <p className="text-sm text-white/80 leading-relaxed max-w-[240px] line-clamp-4">
+          {outfit.outfitDescription}
+        </p>
+        <div className="mt-4 flex items-center justify-center gap-2">
+          <div className="w-2 h-2 rounded-full bg-white/60" />
+          <div className="w-16 h-0.5 bg-white/30" />
+          <div className="w-2 h-2 rounded-full bg-white/60" />
+        </div>
+      </div>
     </div>
   );
 }
