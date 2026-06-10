@@ -143,7 +143,9 @@ export function OutfitGenerator({
   );
 }
 
-/** 穿搭效果图：加载 AI 图片，失败时显示精美占位卡片 */
+import { useState as useStateImg } from 'react';
+
+/** 穿搭效果图：加载 AI 图片，带 loading 和重试 */
 function OutfitImage({
   imageUrl,
   outfit,
@@ -153,25 +155,37 @@ function OutfitImage({
   outfit: GenerateOutfitResponse;
   styleLabel: string;
 }) {
-  const [imgError, setImgError] = useState(false);
+  const [imgError, setImgError] = useStateImg(false);
+  const [imgLoaded, setImgLoaded] = useStateImg(false);
+  const [retryKey, setRetryKey] = useStateImg(0);
 
   if (imageUrl && !imgError) {
     return (
       <div className="aspect-[3/4] relative bg-gray-100 dark:bg-gray-700">
+        {!imgLoaded && (
+          <div className="absolute inset-0 flex flex-col items-center justify-center z-10">
+            <div className="w-8 h-8 rounded-full border-2 border-purple-300 border-t-purple-600 animate-spin mb-2" />
+            <span className="text-xs text-gray-400">AI 正在生成效果图...</span>
+          </div>
+        )}
         <img
+          key={retryKey}
           src={imageUrl}
           alt="AI 穿搭效果图"
           className="w-full h-full object-cover"
+          onLoad={() => setImgLoaded(true)}
           onError={() => setImgError(true)}
         />
-        <div className="absolute bottom-2 left-2 right-2 text-[10px] text-white/60 bg-black/30 rounded-lg px-2 py-1">
-          由 AI 生成 · 仅供参考
-        </div>
+        {imgLoaded && (
+          <div className="absolute bottom-2 left-2 right-2 text-[10px] text-white/60 bg-black/30 rounded-lg px-2 py-1">
+            由 AI 生成 · 仅供参考
+          </div>
+        )}
       </div>
     );
   }
 
-  // 占位穿搭卡片
+  // 加载失败 → 占位穿搭卡片
   const colors = [
     'from-purple-500 via-pink-500 to-amber-500',
     'from-blue-500 via-purple-500 to-rose-500',
@@ -199,6 +213,14 @@ function OutfitImage({
           <div className="w-16 h-0.5 bg-white/30" />
           <div className="w-2 h-2 rounded-full bg-white/60" />
         </div>
+        {imageUrl && (
+          <button
+            onClick={() => { setImgError(false); setRetryKey(k => k + 1); }}
+            className="mt-3 px-4 py-1.5 text-xs bg-white/20 hover:bg-white/30 rounded-full transition-colors"
+          >
+            重新加载图片
+          </button>
+        )}
       </div>
     </div>
   );
