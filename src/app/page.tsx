@@ -85,6 +85,7 @@ export default function HomePage() {
             </div>
             <PoseGenerator
               outfitDescription={outfit?.outfitDescription || null}
+              outfitImageUrl={outfit?.generatedImageUrl || null}
               disabled={!outfit}
             />
           </div>

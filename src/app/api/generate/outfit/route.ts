@@ -95,12 +95,32 @@ export async function POST(request: NextRequest) {
       outfitData = generateMockOutfit(clothesToUse, weather, style, userObj);
     }
 
-    // Generate image with Stable Diffusion
+    // 收集人物照片
+    const userPhoto = (user as Record<string, unknown>).frontPhoto as string | undefined;
+
+    // 收集选中衣物的照片（base64），按上装→下装→鞋子排序
+    const clothingPhotos: string[] = [];
+    const selectedIds = outfitData.selectedItems.map((i) => i.id);
+    const order = ['TOP', 'DRESS', 'OUTERWEAR', 'BOTTOM', 'SHOES', 'BAG', 'SCARF', 'BELT', 'HAT', 'JEWELRY', 'GLASSES'];
+    const sorted = [...parsedClothes].sort((a, b) => order.indexOf(a.category) - order.indexOf(b.category));
+    for (const item of sorted) {
+      if (selectedIds.includes(item.id)) {
+        const url = ((item as Record<string, unknown>).imageUrl as string) || '';
+        if (url.startsWith('data:')) clothingPhotos.push(url);
+      }
+    }
+
+    // 生成 prompt（和豆包网页端一致）
+    const clothingCount = clothingPhotos.length;
+    const clothingRefs = Array.from({ length: clothingCount }, (_, i) => `图${i + 2}`).join('、');
+    const imgPrompt = `把图1中的人物穿上${clothingRefs}的衣服鞋子，模拟生成人物穿搭照片`;
+
+    // 用 豆包 生成
     let generatedImageUrl: string | null = null;
     try {
-      generatedImageUrl = await generateImage(outfitData.sdPrompt);
+      generatedImageUrl = await generateImage(imgPrompt, userPhoto || undefined, clothingPhotos.length > 0 ? clothingPhotos : undefined);
     } catch {
-      console.log('Image generation failed, continuing without image');
+      console.log('Image generation failed');
     }
 
     // Save outfit to database

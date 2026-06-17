@@ -10,10 +10,11 @@ import { cn } from '@/lib/utils';
 
 interface PoseGeneratorProps {
   outfitDescription: string | null;
+  outfitImageUrl: string | null;
   disabled: boolean;
 }
 
-export function PoseGenerator({ outfitDescription, disabled }: PoseGeneratorProps) {
+export function PoseGenerator({ outfitDescription, outfitImageUrl, disabled }: PoseGeneratorProps) {
   const { currentCity, currentPoseStyle, setCurrentPoseStyle, currentUser } = useAppStore();
   const [selectedLandmark, setSelectedLandmark] = useState<Landmark | null>(null);
   const [generating, setGenerating] = useState(false);
@@ -35,6 +36,7 @@ export function PoseGenerator({ outfitDescription, disabled }: PoseGeneratorProp
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           outfitDescription,
+          outfitImageUrl,
           cityName: currentCity.name,
           landmark: selectedLandmark,
           poseStyle: currentPoseStyle,
