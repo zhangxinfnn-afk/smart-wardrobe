@@ -1,12 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { neon } from '@neondatabase/serverless';
-
-function getSql() {
-  const url = process.env.DATABASE_URL;
-  if (!url) throw new Error('DATABASE_URL not set');
-  process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
-  return neon(url);
-}
+import { getUserById, updateUser } from '@/lib/db';
 
 async function fileToBase64(file: File | null): Promise<string | null> {
   if (!file || file.size === 0) return null;
@@ -26,11 +19,10 @@ export async function PUT(
 ) {
   try {
     const { id } = await params;
-    const sql = getSql();
 
     // 检查用户是否存在
-    const existing = await sql`SELECT id FROM "User" WHERE id = ${id}`;
-    if (existing.length === 0) {
+    const existing = await getUserById(id);
+    if (!existing) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
@@ -48,32 +40,23 @@ export async function PUT(
     const frontPhoto = await fileToBase64(formData.get('frontPhoto') as File | null);
     const sidePhoto = await fileToBase64(formData.get('sidePhoto') as File | null);
 
-    // 构建动态 UPDATE
-    const updates: string[] = [];
-    const vals: (string | number | null)[] = [];
-    let i = 1;
+    // 构建更新数据
+    const data: Record<string, unknown> = {};
+    if (name !== null) data.name = name;
+    if (gender !== null) data.gender = gender;
+    if (heightStr) data.height = parseFloat(heightStr);
+    if (weightStr) data.weight = parseFloat(weightStr);
+    if (ageStr) data.age = parseInt(ageStr);
+    if (bodyType !== null) data.bodyType = bodyType;
+    if (frontPhoto !== null) data.frontPhoto = frontPhoto;
+    if (sidePhoto !== null) data.sidePhoto = sidePhoto;
 
-    if (name !== null) { updates.push(`"name" = $${i++}`); vals.push(name); }
-    if (gender !== null) { updates.push(`"gender" = $${i++}`); vals.push(gender); }
-    if (heightStr) { updates.push(`"height" = $${i++}`); vals.push(parseFloat(heightStr)); }
-    if (weightStr) { updates.push(`"weight" = $${i++}`); vals.push(parseFloat(weightStr)); }
-    if (ageStr) { updates.push(`"age" = $${i++}`); vals.push(parseInt(ageStr)); }
-    if (bodyType !== null) { updates.push(`"bodyType" = $${i++}`); vals.push(bodyType); }
-    if (frontPhoto !== null) { updates.push(`"frontPhoto" = $${i++}`); vals.push(frontPhoto); }
-    if (sidePhoto !== null) { updates.push(`"sidePhoto" = $${i++}`); vals.push(sidePhoto); }
-
-    if (updates.length === 0) {
+    if (Object.keys(data).length === 0) {
       return NextResponse.json({ error: 'No fields to update' }, { status: 400 });
     }
 
-    updates.push(`"updatedAt" = NOW()`);
-    vals.push(id);
-
-    const query = `UPDATE "User" SET ${updates.join(', ')} WHERE "id" = $${i} RETURNING *`;
-
-    // 使用 neon sql 执行
-    const result = await sql(query, ...vals);
-    return NextResponse.json(result[0]);
+    const result = await updateUser(id, data);
+    return NextResponse.json(result);
   } catch (error) {
     const msg = error instanceof Error ? error.message : String(error);
     console.error('PUT /api/users/[id] error:', msg);
