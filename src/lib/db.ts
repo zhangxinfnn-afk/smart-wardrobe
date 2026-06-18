@@ -5,6 +5,7 @@ import { randomUUID } from 'crypto';
 function getSql() {
   const url = process.env.DATABASE_URL;
   if (!url) throw new Error('DATABASE_URL not set');
+  process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
   return neon(url);
 }
 
@@ -63,12 +64,8 @@ export async function updateUser(id: string, data: Record<string, unknown>) {
   vals.push(new Date().toISOString());
   vals.push(id);
 
-  const rows = await sql`
-    UPDATE "User"
-    SET ${sql.unsafe(sets.join(', '))}
-    WHERE id = $${i}
-    RETURNING *
-  `;
+  const query = `UPDATE "User" SET ${sets.join(', ')} WHERE id = $${i} RETURNING *`;
+  const rows = await sql.query(query, vals);
   return rows[0];
 }
 
@@ -138,12 +135,8 @@ export async function updateClothingItem(id: string, data: Record<string, unknow
   vals.push(new Date().toISOString());
   vals.push(id);
 
-  const rows = await sql`
-    UPDATE "ClothingItem"
-    SET ${sql.unsafe(sets.join(', '))}
-    WHERE id = $${i}
-    RETURNING *
-  `;
+  const query = `UPDATE "ClothingItem" SET ${sets.join(', ')} WHERE id = $${i} RETURNING *`;
+  const rows = await sql.query(query, vals);
   return rows[0];
 }
 
